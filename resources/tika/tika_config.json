@@ -1,0 +1,7 @@
+{
+  "TIKA_VERSION": 1.24,
+  "TIKA_SERVER_JAR": "file:////tika-server.jar",
+  "TIKA_SERVER_ENDPOINT": "localhost",
+  "TIKA_CLIENT_ONLY": false,
+  "TIKA_LOG_PATH": "resources/tika/logs/"
+}
