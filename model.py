@@ -1,3 +1,4 @@
+import os
 import re
 import random
 import warnings
@@ -82,6 +83,13 @@ class SkillFile(InputFile):
         return list(set(skills_list))
 
     def length_split(self, proportions: tuple = (0.45, 0.30, 0.25)):
+        """
+        split the skills data based on how many "words" are in the skill (e.g. "Python"
+        has one word whereas "database management" has two words)
+
+        :param proportions: the weighting for the split
+        :return:
+        """
         # split the skills on how many words are in the skill name
         length_dict = {"one_word": [], "two_word": [], "multi_word": []}
 
@@ -122,6 +130,10 @@ class SkillFile(InputFile):
 
 
 class SentenceTemplate(InputFile):
+    """
+    templates that are used to generate testing/training data sets
+    """
+
     def __init__(self, file_path: str):
         super().__init__(file_path)
         self.__templates = self.import_templates()
@@ -135,6 +147,10 @@ class SentenceTemplate(InputFile):
         self.__templates = value
 
     def import_templates(self):
+        """
+        import the templates that are used to generate the training/test data
+        :return:
+        """
         sentence_templates = []
         with open(self.file_path, "rb") as infile:
             for line in decode_text(infile.read()).splitlines():
@@ -143,7 +159,15 @@ class SentenceTemplate(InputFile):
         return sentence_templates
 
     def test_train_split(self, skill_list: list, sentence_limit: int = 100):
-        # helper function to distribute skill sentence cases
+        """
+        helper function to distribute skill sentence cases
+
+        :param skill_list: the list of skills
+        :param sentence_limit: soft cap on number of sentences to generate for
+            training data
+        :return:
+        """
+
         def add_case(test_data, training_data, num_placeholders, skill_case):
             if num_placeholders == 1:
                 if len(training_data["one_skill_sentences"]) < sentence_limit:
@@ -233,6 +257,12 @@ class SentenceTemplate(InputFile):
 
 
 class RevisionData(InputFile):
+    """
+    data that is used to prevent the spaCy model from forgetting how to classify
+    previously known entities
+    (see here: https://explosion.ai/blog/pseudo-rehearsal-catastrophic-forgetting)
+    """
+
     def __init__(self, file_path: str):
         super().__init__(file_path)
         self.__text = None
@@ -255,6 +285,16 @@ class RevisionData(InputFile):
         self.__revisions = value
 
     def import_text(self, start: float = 0.1, stop: float = 0.1):
+        """
+        import the revision data (text)
+
+        :param start: proportion of text to skip before getting to the "start" of
+            the text that will be used as revision data
+        :param stop: proportion of text left before finishing import of revision data
+            (e.g. 0.1 means 10% of the text will be left behind to remove unhelpful
+            things like an index or references)
+        :return:
+        """
         with open(self.file_path, "rb") as infile:
             raw_text = " ".join(
                 [line for line in decode_text(infile.read()).splitlines() if line]
@@ -266,7 +306,12 @@ class RevisionData(InputFile):
         self.text = raw_text[start_idx:stop_idx]
 
     def test_train_split(self):
-        # helper function to add and keep tracking of what entities have been added to testing/training data sets
+        """
+        helper function to add and keep tracking of what entities have been added to testing/training data sets
+
+        :return:
+        """
+
         def add_revision(entities, entity_counter, data_set):
             for _, _, entity_label in entities:
                 if entity_label in entity_counter.keys():
@@ -318,6 +363,12 @@ class RevisionData(InputFile):
 
 
 class NLP:
+    """
+    a wrapper for the spaCy NLP object that contains various other helpful methods like
+    saving the model to disk, getting and filtering training input, and updating the
+    entity recognition component of the NLP pipe
+    """
+
     def __init__(self):
         self.nlp = en_core_web_lg.load()
 
@@ -378,9 +429,15 @@ class NLP:
         return filtered_sentences
 
     def predict_entities(self, sentences: list) -> list:
+        """
+        use the existing spaCy model to predict the entities, then append them to revision. the tagger,
+        parser, and lemmatizer components of the pipeline aren't necessary for the entity recognition task
+
+        :param sentences: the sentences to run the spaCy model on
+        :return:
+        """
+
         revisions = []
-        # use the existing spaCy model to predict the entities, then append them to revision. the tagger,
-        # parser, and lemmatizer components of the pipeline aren't necessary for the entity recognition task
         for doc in self.nlp.pipe(
             sentences, batch_size=50, disable=["tagger", "parser", "lemmatizer"]
         ):
@@ -400,6 +457,13 @@ class NLP:
         return revisions
 
     def update_entity_recognition(self, training_data: list, iterations: int = 30):
+        """
+        update spaCy model entity recognition with Skills data gathered from the training data
+
+        :param training_data: the data to train the spaCy model with
+        :param iterations: how many training iterations (too high could over fit)
+        :return:
+        """
         # add the "SKILL" entity to the Named Entity Recognition component of the spaCy pipeline
         named_entity_component = self.nlp.get_pipe("ner")
         named_entity_component.add_label("SKILL")
@@ -433,6 +497,9 @@ class NLP:
                     print(text)
 
             for training_iteration in range(iterations):
+                # use minibatches to avoid local minima when training the model
+                # see here for reference:
+                # https://datascience.stackexchange.com/questions/16807/why-mini-batch-size-is-better-than-one-single-batch-with-all-training-data
                 random.shuffle(examples)
                 minibatches = minibatch(examples, size=sizes)
                 losses = {}
@@ -442,13 +509,9 @@ class NLP:
 
                 print(f"Losses ({training_iteration + 1}/{iterations})", losses)
 
-    def save(self):
-        self.nlp.meta["name"] = "skill_entity_extractor_v3"
-        self.nlp.to_disk("./models/v3")
-
 
 def main():
-    skill_file = SkillFile("scraped_skills.txt")
+    skill_file = SkillFile("resources/scraped_skills.txt")
     skill_file.length_split()
 
     sentence_templates = SentenceTemplate("skill_sentence_templates.txt")
@@ -471,5 +534,3 @@ def main():
     ] + train_revision_data
 
     nlp.update_entity_recognition(combined_training_data)
-
-    nlp.save()

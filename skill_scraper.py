@@ -15,9 +15,13 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+ENV_RESOURCES = "resources/"
+
 
 def initialize_web_scraper() -> selenium.webdriver.chrome.webdriver.WebDriver:
-
+    """
+    Initialize an instance of the selenium webdriver
+    """
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--start-maximized")
     chrome_options.add_argument("--disable-gpu")
@@ -34,6 +38,14 @@ def initialize_web_scraper() -> selenium.webdriver.chrome.webdriver.WebDriver:
 def linkedin_login(
     driver: selenium.webdriver.chrome.webdriver.WebDriver, credentials: dict
 ):
+    """
+    Log in to LinkedIn with the selenium webdriver instance, since skills information
+    isn't available in the public view.
+
+    :param driver: the selenium webdriver instance
+    :param credentials: the credentials that will be used to log in (username/password)
+    :return:
+    """
     # need to log in to LinkedIn since skills aren't available in the public view
     driver.get("https://www.linkedin.com/")
 
@@ -73,6 +85,20 @@ def get_user_profiles(
     full_automation: bool,
     num_pages: int = 10,
 ) -> list[str]:
+    """
+    Use Google to get LinkedIn profiles related to a particular type of job
+    (e.g. Data Science)
+
+    :param driver: the selenium webdriver instance
+    :param job_query: a list of strings containing the types of jobs to look for
+    :param full_automation: whether the instance should wait for a human to deal with
+        bot detection. If False, will wait ~2 hours after scraping every 5 pages of
+        results to try to get around Google's advanced query flagging system. Otherwise,
+        will scrape as many pages as quickly as possible and rely on a human to do the
+        bot detection test
+    :param num_pages: how many pages of Google search results to scrape
+    :return:
+    """
     # look for profiles related to the job type
     driver.get("https://www.google.com")
 
@@ -137,7 +163,7 @@ def get_user_profiles(
             raise error
 
         finally:
-            with open("user_profile_urls.txt", "a+") as outfile:
+            with open(ENV_RESOURCES + "user_profile_urls.txt", "a+") as outfile:
                 outfile.write("\n".join(all_profile_urls))
 
     return all_profile_urls
@@ -146,28 +172,50 @@ def get_user_profiles(
 def scrape_skills(
     driver: selenium.webdriver.chrome.webdriver.WebDriver, profile_url
 ) -> set[str]:
+    """
+    Get the skills from a particular LinkedIn profile
+
+    :param driver: the selenium webdriver instance
+    :param profile_url: a scraped LinkedIn profile URL
+    :return:
+    """
     # navigate to the LinkedIn profile
     formatted_profile_url = profile_url.strip().removesuffix("/")
     driver.get(formatted_profile_url)
     time.sleep(10)
 
     # handle if LinkedIn detects selenium webdriver
-    standardized_profile_url = re.sub(r"(?<=https://).*(?=\.linkedin)", "www", formatted_profile_url)
+    standardized_profile_url = re.sub(
+        r"(?<=https://).*(?=\.linkedin)", "www", formatted_profile_url
+    )
     try:
-        standardized_profile_url = re.search(r"https://www\.linkedin\.com/in/[A-Za-z0-9-]+", standardized_profile_url, flags=re.IGNORECASE).group(0)
+        standardized_profile_url = re.search(
+            r"https://www\.linkedin\.com/in/[A-Za-z0-9-]+",
+            standardized_profile_url,
+            flags=re.IGNORECASE,
+        ).group(0)
     except AttributeError:
         print(f"Profile {formatted_profile_url} has an unexpected format. Skipping...")
         return set()
 
-    compiled_profile_regex = re.compile(fr"{standardized_profile_url}|{formatted_profile_url}", flags=re.IGNORECASE)
-    discovered_profile_url = re.search(compiled_profile_regex, driver.current_url.removesuffix("/"))
+    compiled_profile_regex = re.compile(
+        fr"{standardized_profile_url}|{formatted_profile_url}", flags=re.IGNORECASE
+    )
+    discovered_profile_url = re.search(
+        compiled_profile_regex, driver.current_url.removesuffix("/")
+    )
     while not discovered_profile_url:
-        discovered_profile_url = re.search(compiled_profile_regex, driver.current_url.removesuffix("/"))
+        discovered_profile_url = re.search(
+            compiled_profile_regex, driver.current_url.removesuffix("/")
+        )
         input(f"LinkedIn verification step detected. Waiting for human input...")
 
     # find the url to get to the skills page and navigate there
     profile_selector = Selector(text=driver.page_source)
-    skills_url_pattern = re.compile("(?<=href=\")https://[a-z]{2,3}\.linkedin\.com/.*/details/skills\?.*(?=\">)", flags=re.IGNORECASE)
+    skills_url_pattern = re.compile(
+        "(?<=href=\")https://[a-z]{2,3}\.linkedin\.com/.*/details/skills\?.*(?=\">)",
+        flags=re.IGNORECASE,
+    )
     skills_page_url = profile_selector.xpath(
         "//div[@class='pvs-list__footer-wrapper']/div[@class]/a[@class][@href][@target]"
     ).re(skills_url_pattern)
@@ -191,16 +239,14 @@ def scrape_skills(
 
 def main(
     num_pages: int = typer.Argument(
-        5,
-        help="number of Google pagination actions to attempt"
+        5, help="number of Google pagination actions to attempt"
     ),
     credentials: str = typer.Option(
-        None,
-        help="a JSON containing credentials to log into LinkedIn with"
+        None, help="a JSON containing credentials to log into LinkedIn with"
     ),
     full_automation: bool = typer.Option(
         False,
-        help="prompt the user when an unforeseen state occurs (bot detection from LinkedIn and Google)"
+        help="prompt the user when an unforeseen state occurs (bot detection from LinkedIn and Google)",
     ),
     restart: bool = typer.Option(
         False,
@@ -209,14 +255,16 @@ def main(
     job_query: list[str] = typer.Option(
         None,
         help=(
-                "job terms to search for. multiple job terms can be used as part of the search query; "
-                "prepend each term with a --job_query flag"
-              )
+            "job terms to search for. multiple job terms can be used as part of the search query; "
+            "prepend each term with a --job_query flag"
+        ),
     ),
 ):
 
     if not job_query and not restart:
-        raise ValueError("At least one job query term needs to be provided if starting from scratch")
+        raise ValueError(
+            "At least one job query term needs to be provided if starting from scratch"
+        )
 
     if not credentials:
         credentials = "credentials.json"
@@ -235,13 +283,13 @@ def main(
         all_relevant_skills = set()
     else:
         try:
-            with open("user_profiles.txt", "r") as infile:
+            with open(ENV_RESOURCES + "user_profiles.txt", "r") as infile:
                 user_profiles = infile.readlines()
         except FileNotFoundError:
             raise FileNotFoundError("No user profiles record")
 
         try:
-            with open("scraped_skills.txt", "r") as infile:
+            with open(ENV_RESOURCES + "scraped_skills.txt", "r") as infile:
                 scraped_skills = infile.readlines()
             all_relevant_skills = set([skill.strip() for skill in scraped_skills])
         except FileNotFoundError:
@@ -253,7 +301,7 @@ def main(
 
     for user_profile in user_profiles:
         try:
-            with open("scraped_skills.txt", "a+") as outfile:
+            with open(ENV_RESOURCES + "scraped_skills.txt", "a+") as outfile:
                 time.sleep(random.choice(range(10)))
                 scraped_skills = scrape_skills(driver, user_profile)
 
@@ -273,7 +321,7 @@ def main(
         finally:
             # dump profiles that haven't been scraped yet to reduce next restart's runtime in case of error
             skipped_profiles = list(set(user_profiles) - set(scraped_profiles))
-            with open("user_profiles.txt", "w") as outfile:
+            with open(ENV_RESOURCES + "user_profiles.txt", "w") as outfile:
                 outfile.write("".join(skipped_profiles))
 
     return
