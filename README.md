@@ -31,7 +31,7 @@ the resume separated by bullet points, spaCy tries to interpret the entire bulle
 single entity.
 ---
 #### 4. How to run your project. (4 points)
-- Step 0: install java 7 or 7+ runtime for tika (one of the dependencies) [instructions here](https://docs.oracle.com/javase/7/docs/webnotes/install/mac/mac-jdk.html)
+- Step 0: install java 7 or 7+ runtime for tika if java isn't already installed (try `java --version`) (one of the dependencies) [instructions here](https://docs.oracle.com/javase/7/docs/webnotes/install/mac/mac-jdk.html)
 - Step 1: install poetry if not already on system (follow the instructions here: [poetry docs](https://python-poetry.org/docs/)
 - Step 2: initialize a `pyproject.toml` file with `poetry init`
 - Step 3: install dependencies with `poetry install`
