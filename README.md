@@ -9,24 +9,17 @@ cover letter.
 ---
 ## 2. Explains in a few sentences why you selected this project, and if you learned what you had hoped to learn by doing this project (from your proposal). Explain. (4 points)
 
-Interest: Natural Language Processing is an incredibly versatile tool that’s used for 
-everything from ordinary text parsing to categorizing functional genomic regions in gene 
-sequence data. The flexibility and utility of NLP is something that I want to learn to 
-utilize, and using it to generate a relatively standardized text output. 
-
-What I learned: I gained familiarity with the data types/formats that are commonly 
-used in the NLP space. Learned how to use spaCy and NLTK Python libraries. I also became
-more familiar with common complications in the space of generating testing/training
-data.
+- Interest: Natural Language Processing is an incredibly versatile tool that’s used for everything from ordinary text parsing to categorizing functional genomic regions in gene sequence data. The flexibility and utility of NLP is something that I want to learn to utilize, and using it to generate a relatively standardized text output. 
+- What I learned: I gained familiarity with the data types/formats that are commonly used in the NLP space. Learned how to use spaCy and NLTK Python libraries. I also became more familiar with common complications in the space of generating testing/training data.
 ---
 ## 3. What you would do differently if you were to have an opportunity to redo this project and why. (4 points)
 
-Instead of designing my own training loop, I probably would've taken advantage of the
+1. Instead of designing my own training loop, I probably would've taken advantage of the
 config based training that spaCy v3.0 suggests using now. I used the old method because
 I wanted to gain additional familiarity with OOP and also see how the industry standard of
 OOP appears to 3rd party developers. 
 
-I would also create a much more robust training set. Currently, the "trained" model is very
+2. I would also create a much more robust training set. Currently, the "trained" model is very
 bad at distinguishing the barriers between skills. For example, if there is a list of skills in
 the resume separated by bullet points, spaCy tries to interpret the entire bulleted list as a
 single entity.
