@@ -21,20 +21,26 @@ def make_prompt_sentence(
         num_choices = len(set(skill_list))
 
     # de-duplicate. random.sample will be deprecated for set so use a list
-    random_skills = random.sample(list(set(skill_list)), k=num_choices)
+    formatted_skill_list = [
+        re.sub(r"[^a-z0-9^+# ]", "", skill, flags=re.IGNORECASE)
+        for skill in skill_list
+        if re.sub(r"[^a-z0-9^+# ]", "", skill, flags=re.IGNORECASE)
+    ]
+    random_skills = random.sample(list(set(formatted_skill_list)), k=num_choices)
 
     output_string = start_string
-    for skill in random_skills[:-1]:
-        formatted_skill = re.sub(r"[^a-z0-9^+# ]", "", skill, flags=re.IGNORECASE)
+    for formatted_skill in random_skills[:-1]:
         output_string += f"{formatted_skill}"
         if len(random_skills) > 2:
             output_string += ", "
         else:
             output_string += " "
 
-    output_string += f"and {random_skills[-1]}."
+    output_string += f"and {random_skills[-1]}"
 
     if end_string:
         output_string += end_string
+    else:
+        output_string += "."
 
     return output_string, num_choices - 1
