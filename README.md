@@ -2,7 +2,7 @@
 ---
 ## 1. Describes the project. If you are doing a predefined project choice, explain how you implemented that specific choice. This description should match what you submitted as your project proposal. (4 points)
 
-Project idea: Scrape skills related to a specific job interest, and train a language 
+- Project idea: Scrape skills related to a specific job interest, and train a language 
 model to recognize those skills and identify them in a resume context. Then generate
 a prompt to be submitted to GPT-3 or ChatGPT to have those language models create a
 cover letter.
